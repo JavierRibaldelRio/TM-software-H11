@@ -1,0 +1,58 @@
+[
+    {
+        "Name": "voltaje",
+        "Number": 1,
+        "Unit": "V",
+        "Period": 50,
+        "Avg": 12,
+        "Sdev": 1
+    },
+    {
+        "Name": "voltaje",
+        "Number": 2,
+        "Unit": "V",
+        "Period": 50,
+        "Avg": 12,
+        "Sdev": 3
+    },
+    {
+        "Name": "voltaje",
+        "Number": 3,
+        "Unit": "V",
+        "Period": 55,
+        "Avg": 12,
+        "Sdev": 2.5
+    },
+    {
+        "Name": "voltaje",
+        "Number": 4,
+        "Unit": "V",
+        "Period": 60,
+        "Avg": 12,
+        "Sdev": 3
+    },
+    {
+        "Name": "distance",
+        "Number": 1,
+        "Unit": "cm",
+        "Period": 20,
+        "Avg": 20,
+        "Sdev": 1
+    },
+    {
+        "Name": "distance",
+        "Number": 2,
+        "Unit": "cm",
+        "Period": 23,
+        "Avg": 20,
+        "Sdev": 0.5
+    },
+    {
+        "Name": "distance",
+        "Number": 3,
+        "Unit": "cm",
+        "Period": 23,
+        "Avg": 20,
+        "Sdev": 2
+    }
+]

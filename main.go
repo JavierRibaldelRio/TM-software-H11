@@ -23,7 +23,7 @@ func main() {
 	data := make(map[string][]float64)
 
 	// Starts all the sensors
-	StartSensors(ctx, readings)
+	sensors.StartSensors(ctx, readings, "sensors.json")
 
 	// CSV writer
 	writer, closeFile := SetUpCSVWriter()
@@ -36,26 +36,6 @@ func main() {
 	// Register the output of the sensors
 	runProcessingLoop(ctx, readings, data, ticker, writer)
 
-}
-
-// StartSensors starts sensor goroutines that write to 'readings'.
-// They stop when ctx is canceled. This function does not close 'readings'.
-func StartSensors(ctx context.Context, readings chan<- sensors.Data) {
-	ss := []sensors.Sensor{
-		{Name: "voltaje", Number: 1, Unit: "V", Period: 50 * time.Millisecond, Avg: 12, Sdev: 1},
-		{Name: "voltaje", Number: 2, Unit: "V", Period: 50 * time.Millisecond, Avg: 12, Sdev: 2},
-		{Name: "voltaje", Number: 3, Unit: "V", Period: 55 * time.Millisecond, Avg: 12, Sdev: 2.5},
-		{Name: "voltaje", Number: 4, Unit: "V", Period: 60 * time.Millisecond, Avg: 12, Sdev: 3},
-
-		{Name: "distance", Number: 1, Unit: "cm", Period: 20 * time.Millisecond, Avg: 20, Sdev: 1},
-		{Name: "distance", Number: 2, Unit: "cm", Period: 23 * time.Millisecond, Avg: 20, Sdev: 0.50},
-		{Name: "distance", Number: 3, Unit: "cm", Period: 23 * time.Millisecond, Avg: 20, Sdev: 2},
-	}
-
-	// Launch all sensors.
-	for i := range ss {
-		ss[i].StartMeasuring(ctx, readings)
-	}
 }
 
 // ParseDataWriteLog writes one CSV row per magnitude in `data`.
