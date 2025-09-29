@@ -27,6 +27,15 @@ type Data struct {
 	Number    int64
 }
 
+// Stores the data before to be sended
+type Record struct {
+	Timestamp string // Time
+	Magnitude string
+	Min       float64
+	Max       float64
+	Avg       float64
+}
+
 // Using the properties of a Sensor generates following a normal distribution values
 func (s Sensor) Read() Data {
 	v := s.Avg + s.Sdev*rand.NormFloat64() // N(Avg, Sdev)
