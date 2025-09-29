@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"ribal-backend-receiver/csvutil"
 	"ribal-backend-receiver/sensors"
@@ -27,6 +28,16 @@ func main() {
 	// Inform use that port is ready
 	fmt.Println("Server is listening on port 8080")
 
+	// buffer to write into the csv
+	writeBuffer := make(chan sensors.Record, 4096)
+
+	go writeBufferToCSV(writeBuffer, writer)
+
+	acceptIncomeConn(listener, writeBuffer)
+
+}
+
+func acceptIncomeConn(listener net.Listener, buffer chan<- sensors.Record) {
 	for {
 		// Accept incoming connections
 		conn, err := listener.Accept()
@@ -36,24 +47,38 @@ func main() {
 		}
 
 		// Handle client connection in a goroutine
-		go handleClient(conn, writer)
+		go handleClient(conn, buffer)
+	}
+
+}
+
+// Handles client coneccion
+func handleClient(conn net.Conn, buffer chan<- sensors.Record) {
+	defer conn.Close()
+
+	dec := json.NewDecoder(conn)
+
+	for {
+		var rec sensors.Record
+		if err := dec.Decode(&rec); err != nil {
+			if err == io.EOF {
+				fmt.Println("client disconnected")
+				return
+			}
+			fmt.Println("decode error:", err)
+			return
+		}
+
+		// Política simple: bloquear hasta que haya hueco.
+		buffer <- rec
 	}
 }
 
-func handleClient(conn net.Conn, writer *csv.Writer) {
-	defer conn.Close()
+// writes buffer into the csv
+func writeBufferToCSV(buffer chan sensors.Record, writer *csv.Writer) {
 
-	for {
-		// Read data from the client
-		d := json.NewDecoder(conn)
+	for rec := range buffer {
 
-		var rec sensors.Record
-		err := d.Decode(&rec)
-		if err != nil {
-			fmt.Println("error:", err)
-		}
-
-		// Process and use the data (here, we'll just print it)
 		csvutil.AddToCSV(*writer, rec)
 
 	}
