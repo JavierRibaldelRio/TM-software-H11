@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,18 +12,10 @@ import (
 
 func main() {
 
-	// buffer to write into the csv
-	writeBuffer := make(chan sensors.Record, 4096)
-
-	go writeBufferToCSV(writeBuffer)
-
-	// TCP connction with backends
-	acceptIncomeConn(writeBuffer)
-
-}
-
-// Accept new tpconnections and register the data into de buffer after each msg
-func acceptIncomeConn(buffer chan<- sensors.Record) {
+	// Open csv
+	// CSV writer
+	writer, closeFile := csvutil.SetUpCSVWriter()
+	defer closeFile()
 
 	// open server
 	listener, err := net.Listen("tcp", "localhost:8080")
@@ -32,6 +25,19 @@ func acceptIncomeConn(buffer chan<- sensors.Record) {
 	}
 	defer listener.Close()
 
+	// Inform use that port is ready
+	fmt.Println("Server is listening on port 8080")
+
+	// buffer to write into the csv
+	writeBuffer := make(chan sensors.Record, 4096)
+
+	go writeBufferToCSV(writeBuffer, writer)
+
+	acceptIncomeConn(listener, writeBuffer)
+
+}
+
+func acceptIncomeConn(listener net.Listener, buffer chan<- sensors.Record) {
 	for {
 		// Accept incoming connections
 		conn, err := listener.Accept()
@@ -69,12 +75,8 @@ func handleClient(conn net.Conn, buffer chan<- sensors.Record) {
 }
 
 // writes buffer into the csv
-func writeBufferToCSV(buffer chan sensors.Record) {
-	// Open csv
-	// CSV writer
+func writeBufferToCSV(buffer chan sensors.Record, writer *csv.Writer) {
 
-	writer, closeFile := csvutil.SetUpCSVWriter()
-	defer closeFile()
 	for rec := range buffer {
 
 		csvutil.AddToCSV(*writer, rec)
