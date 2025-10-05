@@ -1,0 +1,4 @@
+{
+    "RingBufferSize": 10,
+    "BufferSize": 4096
+}

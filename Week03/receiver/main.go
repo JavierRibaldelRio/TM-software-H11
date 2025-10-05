@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"ribal-backend-receiver/config"
 	"ribal-backend-receiver/csvutil"
 	"ribal-backend-receiver/httpws"
 	"ribal-backend-receiver/logger"
@@ -15,11 +16,13 @@ import (
 
 func main() {
 
+	cfg, _ := config.Load("config/config.json")
+
 	// buffer to write into the csv
-	writeBuffer := make(chan sensors.Record, 4096)
+	writeBuffer := make(chan sensors.Record, cfg.BufferSize)
 
 	// ring buffer
-	ring := ringbuffer.NewRing[sensors.Record](10)
+	ring := ringbuffer.NewRing[sensors.Record](cfg.RingBufferSize)
 
 	// TCP connction with
 	go acceptIncomeConn(writeBuffer)
