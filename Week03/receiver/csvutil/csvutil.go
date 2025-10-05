@@ -48,8 +48,6 @@ func createCSV() {
 // adds a record to the csv
 func AddToCSV(data sensors.Record) {
 
-	fmt.Print(data)
-
 	// Format new line
 	record := []string{
 		data.Timestamp,
