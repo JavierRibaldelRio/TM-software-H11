@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"ribal-backend-receiver/logger"
 	"ribal-backend-receiver/ringbuffer"
 	"ribal-backend-receiver/sensors"
+	"ribal-backend-receiver/state"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,11 +20,17 @@ func StartHttpWSServer(ring *ringbuffer.RingBuffer[sensors.Record]) {
 
 	mux := http.NewServeMux()
 
+	// Ws connection
 	mux.HandleFunc("/api/stream", wsStreamHandler)
+
+	// get last messages
 	mux.HandleFunc("/api/messages", func(w http.ResponseWriter, r *http.Request) { getMessages(w, r, ring.Read()) })
 
+	// Post orders
+	mux.HandleFunc("/api/commands", postCmd)
+
 	addr := ":8081"
-	fmt.Println("Servidor HTTP escuchando en", addr)
+	logger.Info("WS server listening on port 8081 (frontend)")
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		panic(err)
 	}
@@ -31,6 +40,10 @@ func StartHttpWSServer(ring *ringbuffer.RingBuffer[sensors.Record]) {
 /**
 * API
  */
+
+type command struct {
+	Action string
+}
 
 // Returns the ring buffer
 func getMessages(w http.ResponseWriter, r *http.Request, lastMsg []sensors.Record) {
@@ -45,6 +58,36 @@ func getMessages(w http.ResponseWriter, r *http.Request, lastMsg []sensors.Recor
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(lastMsg)
+}
+
+// Handler for POST
+func postCmd(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var cmd command
+	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	switch strings.ToUpper(cmd.Action) {
+
+	case "CONTINUE":
+		state.SetPower(true)
+		logger.Action(cmd.Action)
+
+	case "PAUSE", "STOP":
+		state.SetPower(false)
+		logger.Action(cmd.Action)
+
+	}
+
+	response := map[string]string{
+		"status": "ok",
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 /**
@@ -68,20 +111,19 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 	// Tries to upgrade connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Printf("upgrade error: %v", err)
 		return
 	}
 	addClient(conn)
 
 	// Prints the number of clients
-	fmt.Printf("WS CONNECT (%d activos)\n", func() int { clientsMu.RLock(); defer clientsMu.RUnlock(); return len(clients) }())
+	logger.Info(fmt.Sprintf("WS CONNECT (%d connected)\n", func() int { clientsMu.RLock(); defer clientsMu.RUnlock(); return len(clients) }()))
 
 	// Discard readings
 	go func(c *websocket.Conn) {
 		defer removeClient(c)
 		for {
 			if _, _, err := c.ReadMessage(); err != nil {
-				fmt.Printf("WS CLOSE: %v\n", err)
+				logger.Info(fmt.Sprintf("WS CLOSE: %v\n", err))
 				return
 			}
 		}
