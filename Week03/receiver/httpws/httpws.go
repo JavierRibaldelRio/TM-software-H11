@@ -4,12 +4,52 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"ribal-backend-receiver/ringbuffer"
 	"ribal-backend-receiver/sensors"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+// Starts the http server
+func StartHttpWSServer(ring *ringbuffer.RingBuffer[sensors.Record]) {
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/stream", wsStreamHandler)
+	mux.HandleFunc("/api/messages", func(w http.ResponseWriter, r *http.Request) { getMessages(w, r, ring.Read()) })
+
+	addr := ":8081"
+	fmt.Println("Servidor HTTP escuchando en", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		panic(err)
+	}
+
+}
+
+/**
+* API
+ */
+
+// Returns the ring buffer
+func getMessages(w http.ResponseWriter, r *http.Request, lastMsg []sensors.Record) {
+
+	// Checks if is a get  request
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(lastMsg)
+}
+
+/**
+* Web Sockets
+ */
 
 // WS updatesr
 var upgrader = websocket.Upgrader{
@@ -22,24 +62,6 @@ var (
 	clientsMu sync.RWMutex                         // RWMutex used to avoid reading and writing at the same time
 )
 
-func StartHttpWSServer() {
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/api/stream", wsStreamHandler)
-
-	addr := ":8081"
-	fmt.Println("Servidor HTTP escuchando en", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		panic(err)
-	}
-
-}
-
-/**
-* Web Sockets
- */
-
 // Conection to /api/stream
 func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -49,7 +71,7 @@ func wsStreamHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("upgrade error: %v", err)
 		return
 	}
-	addClient(conn) // alta
+	addClient(conn)
 
 	// Prints the number of clients
 	fmt.Printf("WS CONNECT (%d activos)\n", func() int { clientsMu.RLock(); defer clientsMu.RUnlock(); return len(clients) }())
@@ -82,6 +104,7 @@ func removeClient(c *websocket.Conn) {
 	_ = c.Close()      // Closes the connection with that specific client
 }
 
+// Sends a JSON to all the clients
 func BroadcastJSON(dataSensor sensors.Record) {
 
 	// Transforms it to a JSON

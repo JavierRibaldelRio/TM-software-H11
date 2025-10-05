@@ -7,6 +7,7 @@ import (
 	"net"
 	"ribal-backend-receiver/csvutil"
 	"ribal-backend-receiver/httpws"
+	"ribal-backend-receiver/ringbuffer"
 	"ribal-backend-receiver/sensors"
 )
 
@@ -15,12 +16,15 @@ func main() {
 	// buffer to write into the csv
 	writeBuffer := make(chan sensors.Record, 4096)
 
+	// ring buffer
+	ring := ringbuffer.NewRing[sensors.Record](10)
+
 	// TCP connction with backends
 	go acceptIncomeConn(writeBuffer)
 
-	go writeBufferToCSV(writeBuffer)
+	go writeBufferToCSV(writeBuffer, ring)
 
-	httpws.StartHttpWSServer()
+	httpws.StartHttpWSServer(ring)
 
 }
 
@@ -71,9 +75,7 @@ func handleClient(conn net.Conn, buffer chan<- sensors.Record) {
 }
 
 // writes buffer into the csv
-func writeBufferToCSV(buffer chan sensors.Record) {
-	// Open csv
-	// CSV writer
+func writeBufferToCSV(buffer chan sensors.Record, ring *ringbuffer.RingBuffer[sensors.Record]) {
 
 	writer, closeFile := csvutil.SetUpCSVWriter()
 	defer closeFile()
@@ -83,5 +85,6 @@ func writeBufferToCSV(buffer chan sensors.Record) {
 
 		httpws.BroadcastJSON(rec)
 
+		ring.Add(rec)
 	}
 }
