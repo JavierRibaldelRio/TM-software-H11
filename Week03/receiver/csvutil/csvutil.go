@@ -4,39 +4,51 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"ribal-backend-receiver/logger"
 	"ribal-backend-receiver/sensors"
 	"strconv"
 	"time"
 )
 
-// setCSVWriter configures and return the csv file writer and a function
-// to close the writer
-func SetUpCSVWriter() (*csv.Writer, func()) {
+var (
+	writer   *csv.Writer
+	file     *os.File
+	filename string
+)
+
+// creates the loger file
+func init() {
 
 	// Create file
-	filename := fmt.Sprintf("output_%s.csv", time.Now().Format("20060102_150405"))
+	filename = fmt.Sprintf("logs/data/data-output-%s.csv", time.Now().Format("2006-01-02_15-04-05"))
 
+	createCSV()
+
+	logger.Info("CSV file was created at " + filename)
+
+}
+
+// creates the csv file
+func createCSV() {
 	f, err := os.Create(filename)
 	if err != nil {
+		logger.Error(err.Error())
 		panic(err)
 	}
 
+	file = f
+
 	// Create writer
-	writer := csv.NewWriter(f)
+	writer = csv.NewWriter(f)
 
 	// write header in log
 	writer.Write([]string{"timestamp", "magnitude", "avg", "min", "max"})
-
-	// Retunrs thew writer and a function to close it
-	return writer, func() {
-		writer.Flush()
-		f.Close()
-	}
 }
 
-// given a records an a csv adds it to the csv
+// adds a record to the csv
+func AddToCSV(data sensors.Record) {
 
-func AddToCSV(writer csv.Writer, data sensors.Record) {
+	fmt.Print(data)
 
 	// Format new line
 	record := []string{
@@ -51,4 +63,14 @@ func AddToCSV(writer csv.Writer, data sensors.Record) {
 	writer.Write(record)
 	writer.Flush()
 
+}
+
+// Overwrites (cleans) the current CSV file, preserving the same filename
+func ClearCSV() {
+	if file != nil {
+		file.Close()
+	}
+	createCSV()
+
+	logger.Info("CSV file was cleared out")
 }

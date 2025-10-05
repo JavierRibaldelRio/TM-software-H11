@@ -88,8 +88,6 @@ func handleClient(conn net.Conn, buffer chan<- sensors.Record) {
 // Recieve the data from sensors, writes it down on the CSV, sends it through webscokets and adds it to the round buffer
 func recieveData(buffer chan sensors.Record, ring *ringbuffer.RingBuffer[sensors.Record]) {
 
-	writer, closeFile := csvutil.SetUpCSVWriter()
-	defer closeFile()
 	for rec := range buffer {
 
 		// If it is power on avoids scripture
@@ -98,7 +96,7 @@ func recieveData(buffer chan sensors.Record, ring *ringbuffer.RingBuffer[sensors
 		}
 
 		// CSV
-		csvutil.AddToCSV(*writer, rec)
+		csvutil.AddToCSV(rec)
 
 		// Broadcast
 		httpws.BroadcastJSON(rec)
