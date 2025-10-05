@@ -1,7 +1,6 @@
 package ringbuffer
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -51,8 +50,6 @@ func NewRing[T any](size int) *RingBuffer[T] {
 
 // Removes the oldest and adds a new one
 func (ring *RingBuffer[T]) Add(v T) {
-
-	fmt.Print(ring.Read())
 
 	// Blocks to write
 	ring.mu.Lock()
