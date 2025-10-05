@@ -4,10 +4,15 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"path/filepath"
 	"ribal-backend-receiver/logger"
 	"ribal-backend-receiver/sensors"
 	"strconv"
 	"time"
+)
+
+const (
+	logDir = "logs/data"
 )
 
 var (
@@ -19,8 +24,10 @@ var (
 // creates the loger file
 func init() {
 
+	os.MkdirAll(logDir, 0755)
+
 	// Create file
-	filename = fmt.Sprintf("logs/data/data-output-%s.csv", time.Now().Format("2006-01-02_15-04-05"))
+	filename = filepath.Join(logDir, fmt.Sprintf("data-output-%s.csv", time.Now().Format("2006-01-02_15-04-05")))
 
 	createCSV()
 
