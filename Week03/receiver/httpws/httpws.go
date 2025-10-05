@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"ribal-backend-receiver/csvutil"
 	"ribal-backend-receiver/logger"
 	"ribal-backend-receiver/ringbuffer"
 	"ribal-backend-receiver/sensors"
@@ -71,6 +72,10 @@ func postCmd(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	response := map[string]string{
+		"status": "ok",
+	}
+
 	switch strings.ToUpper(cmd.Action) {
 
 	case "CONTINUE":
@@ -81,10 +86,15 @@ func postCmd(w http.ResponseWriter, r *http.Request) {
 		state.SetPower(false)
 		logger.Action(cmd.Action)
 
-	}
+	case "CLEAR", "CLEAN":
+		csvutil.ClearCSV()
+		logger.Action(cmd.Action)
 
-	response := map[string]string{
-		"status": "ok",
+	default:
+		response["msg"] = cmd.Action + " action was not found"
+		response["status"] = "error"
+		logger.Error(response["msg"])
+
 	}
 
 	json.NewEncoder(w).Encode(response)
